@@ -1,5 +1,3 @@
-
-
 from flask import Flask, render_template,request, redirect, url_for, Response, flash
 import cv2 
 import imutils
@@ -61,7 +59,7 @@ def convertor_image_to_text(filename):
 
         response = client.text_detection(image=image)
         texts = response.text_annotations
-#         print('Texts:',texts[0].description)
+        print('Texts:',texts[0].description)
         
         if response.error.message:
             raise Exception(
@@ -97,6 +95,7 @@ def translate_text(target, Listoftext):
     import six
     from google.cloud import translate_v2 as translate
     d = dict()
+    result_list = []
     translate_client = translate.Client()
     for text in Listoftext:
         # print("insideloop",text)
@@ -109,8 +108,9 @@ def translate_text(target, Listoftext):
     
         result = translate_client.translate(text, target_language=target)
         temp = format(result["translatedText"])
-        d[text]= temp
-    return d
+        result_list.append(temp)
+    final_list = list(map(lambda x,y:(x,y),Listoftext,result_list))
+    return final_list, result_list
 
 def convertor_text_to_speech(translated_text,language):
     
@@ -170,12 +170,13 @@ def allowed_file(filename):
 
 @app.route('/index', methods=('GET', 'POST'))
 def index():
+    list_of_text1 =[]
     try:
         os.remove("static/output.mp3")
     except OSError:
         pass
     result = "Translated_Text"
-    translated_result  = dict()
+    translated_result  = list()
     print("request",request)
     if request.method == 'POST':
         filename='Image.jpg'
@@ -206,10 +207,11 @@ def index():
         print(language)
         result = convertor_image_to_text(filename)
         list_of_text = result.split('\n')
-        print(result)
-        translated_result = translate_text(language,list_of_text)
-        translated_text = translated_result.values()
-        translated_final_text = ''.join(translated_text)
+        print(list_of_text)
+        list_of_text1 =list_of_text
+        translated_result, translated_list = translate_text(language,list_of_text)
+        print("translated result: ", translated_result)
+        translated_final_text = ' '.join(translated_list)
         print("translated_final_text",translated_final_text)
         convertor_text_to_speech(translated_final_text,language)
 
